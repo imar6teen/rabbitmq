@@ -9,10 +9,10 @@ channel = connection.channel()
 
 channel.queue_declare(queue="task_queue", durable=True)
 
-message = ' '.join(sys.argv[1:])
+message = ' '.join(sys.argv[1:2])
 
 
-for i in range(5):
+for i in range(int(sys.argv[2])):
     dots = '.' * i
     load_message = message + dots
     channel.basic_publish(
