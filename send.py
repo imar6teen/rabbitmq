@@ -9,28 +9,30 @@ channel = connection.channel()
 
 # channel.queue_declare(queue="task_queue", durable=True)
 
-channel.exchange_declare(exchange='logs', exchange_type='fanout')
+channel.exchange_declare(exchange='direct_logs', exchange_type='direct')
 
+severities = [
+    {
+        'sev': 'info',
+        'msg': 'ini hanya info'
+    },
+    {
+        'sev': 'warning',
+        'msg': 'ini warning yaa.'
+    },
+    {
+        'sev': 'dead',
+        'msg': 'u r ded lol'
+    }
+]
 
-message = ' '.join(sys.argv[1:2])
-
-
-for i in range(int(sys.argv[2])):
-    dots = '.' * i
-    load_message = message + dots
-    # channel.basic_publish(
-    #     exchange="",
-    #     routing_key="task_queue",
-    #     body=load_message,
-    #     properties=pika.BasicProperties(
-    #         delivery_mode=pika.spec.PERSISTENT_DELIVERY_MODE)
-    # )
+for severity in severities:
     channel.basic_publish(
-        exchange="logs",
-        routing_key="",
-        body=load_message,
+        exchange="direct_logs",
+        routing_key=severity['sev'],
+        body=severity['msg'],
     )
-    print(f"[x] sent {load_message}")
+    print(f"[x] sent {severity['msg']}")
 
 
 connection.close()

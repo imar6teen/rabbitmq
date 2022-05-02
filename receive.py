@@ -1,11 +1,13 @@
 #! python
-
-from ast import ExceptHandler
-import queue
 import pika
 import sys
 import os
 import time
+
+# ! READ THIS! u have a problem before about acknowledgement
+# ! in case u forgot, the root cause is the queue is exclusive
+# ! so the messages inside the queue are not durable anymore
+# ! the queue will be deleted after the host disconnect (exclusive=True)
 
 
 def main():
@@ -15,16 +17,20 @@ def main():
     channel = connection.channel()
 
     # channel.queue_declare("task_queue", durable=True)
-    channel.exchange_declare(exchange="logs", exchange_type='fanout')
+    channel.exchange_declare(exchange='direct_logs', exchange_type='direct')
 
     result = channel.queue_declare(queue="", exclusive=True)
     queue_name = result.method.queue
 
-    channel.queue_bind(queue=queue_name, exchange='logs')
+    severities = sys.argv[1:]
+
+    for severity in severities:
+        channel.queue_bind(
+            queue=queue_name, exchange='direct_logs', routing_key=severity)
 
     def callback(ch, method, properties, body):
-        print(" [x] Received %r" % body.decode('utf-8'))
-        time.sleep(body.count(b'.'))
+        time.sleep(2)
+        print(f" [x] Received {method.routing_key} : {body.decode('utf-8')}")
         print(" [x] done")
 
     print("Connected to rabbitmq")
