@@ -2,47 +2,37 @@
 import pika
 import sys
 import os
-import time
 
-# ! READ THIS! u have a problem before about acknowledgement
-# ! in case u forgot, the root cause is the queue is exclusive
-# ! so the messages inside the queue are not durable anymore
-# ! the queue will be deleted after the host disconnect (exclusive=True)
+connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
 
 
 def main():
-    connection = pika.BlockingConnection(
-        pika.ConnectionParameters("localhost"))
 
     channel = connection.channel()
 
-    # channel.queue_declare("task_queue", durable=True)
-    channel.exchange_declare(exchange='direct_logs', exchange_type='direct')
+    channel.exchange_declare('topic_logs', 'topic')
 
-    result = channel.queue_declare(queue="", exclusive=True)
-    queue_name = result.method.queue
+    queue = channel.queue_declare('', exclusive=True)
 
-    severities = sys.argv[1:]
+    queue_name = queue.method.queue
 
-    for severity in severities:
-        channel.queue_bind(
-            queue=queue_name, exchange='direct_logs', routing_key=severity)
+    if(len(sys.argv) > 1):
+        for topic_key in sys.argv[1:]:
+            channel.queue_bind(
+                queue=queue_name, exchange='topic_logs', routing_key=topic_key)
+            print(f"{queue_name} bound to topic_logs with routing key {topic_key}")
+    else:
+        print("you need to specify at least one topic key")
+        sys.exit(1)
 
     def callback(ch, method, properties, body):
-        time.sleep(2)
-        print(f" [x] Received {method.routing_key} : {body.decode('utf-8')}")
-        print(" [x] done")
+        print(
+            f" [x] Received {body.decode('utf-8')} from {method.routing_key}")
 
-    print("Connected to rabbitmq")
+    channel.basic_consume(
+        queue=queue_name, on_message_callback=callback, auto_ack=True)
 
-    # FAIR DISPATCH
-    # Make rabbitmq send to other consumer when the consumer busy
-    # rather than send to consumer fairly
-    # channel.basic_qos(prefetch_count=1)
-
-    channel.basic_consume(queue=queue_name, auto_ack=True,
-                          on_message_callback=callback)
-
+    print(' [*] Waiting for messages. To exit press CTRL+C')
     channel.start_consuming()
 
 
@@ -50,8 +40,10 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print('interuppted')
+        print("Closing connection")
+        connection.close()
+        print("Connection closed")
         try:
-            sys.exit()
+            sys.exit(0)
         except SystemExit:
-            os._exit()
+            os._exit(0)
