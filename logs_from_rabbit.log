@@ -1,0 +1,12 @@
+Connected to rabbitmq
+ [x] Received 'haii'
+ [x] done
+ [x] Received 'haii.'
+ [x] done
+ [x] Received 'haii..'
+ [x] done
+ [x] Received 'haii...'
+ [x] done
+ [x] Received 'haii....'
+ [x] done
+interuppted
